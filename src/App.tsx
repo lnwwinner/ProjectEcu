@@ -13,6 +13,7 @@ import {
 import { FileUpload } from './components/FileUpload';
 import { StrategyMenu, TuningStrategy } from './components/StrategyMenu';
 import { SafeSlider } from './components/SafeSlider';
+import { LiveDataDashboard } from './components/LiveDataDashboard';
 import { analyzeECUFile, ECUAnalysis } from './services/geminiService';
 
 export default function App() {
@@ -153,6 +154,8 @@ export default function App() {
 
           {/* Right Column: Strategies & Tuning */}
           <div className="lg:col-span-8 space-y-8">
+            <LiveDataDashboard />
+
             <section>
               <div className="flex items-center gap-2 mb-4">
                 <Activity className="w-4 h-4 text-zinc-500" />

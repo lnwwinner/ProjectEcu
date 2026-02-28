@@ -3,6 +3,7 @@ import { createServer as createViteServer } from "vite";
 import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
+import { WebSocketServer } from "ws";
 import { BinaryECUParser } from "./src/services/ecuParser.ts";
 
 const upload = multer({ dest: "uploads/" });
@@ -125,8 +126,41 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+  });
+
+  // Setup WebSocket Server for real-time ECU data streaming
+  const wss = new WebSocketServer({ server });
+
+  wss.on("connection", (ws) => {
+    console.log("Client connected to real-time ECU stream");
+
+    // Simulate real-time ECU data
+    const interval = setInterval(() => {
+      if (ws.readyState === ws.OPEN) {
+        // Generate simulated data
+        const rpm = Math.floor(800 + Math.random() * 6000); // 800 - 6800 RPM
+        const temperature = Math.floor(80 + Math.random() * 30); // 80 - 110 C
+        const boostPressure = (0.5 + Math.random() * 1.5).toFixed(2); // 0.5 - 2.0 Bar
+        const afr = (12.0 + Math.random() * 3.0).toFixed(1); // 12.0 - 15.0
+        const load = Math.floor(10 + Math.random() * 90); // 10% - 100%
+
+        ws.send(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          rpm,
+          temperature,
+          boostPressure: parseFloat(boostPressure),
+          afr: parseFloat(afr),
+          load
+        }));
+      }
+    }, 500); // Send data every 500ms
+
+    ws.on("close", () => {
+      console.log("Client disconnected from real-time ECU stream");
+      clearInterval(interval);
+    });
   });
 }
 

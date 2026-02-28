@@ -59,3 +59,43 @@ export async function analyzeECUFile(filename: string, hexSample: string): Promi
     throw new Error("Failed to analyze ECU file with AI.");
   }
 }
+
+export interface ImpactReport {
+  hpGain: number;
+  tqGain: number;
+  risk: string;
+  summary: string;
+}
+
+export async function generateImpactReport(
+  strategy: string,
+  boost: number,
+  afr: number,
+  timing: number
+): Promise<ImpactReport> {
+  try {
+    // First get the basic heuristic calculation from the backend
+    const res = await fetch('/api/impact-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ strategy, boost, afr, timing })
+    });
+    
+    if (!res.ok) throw new Error("Failed to fetch impact report");
+    const data = await res.json();
+
+    // Enhance the summary with Gemini
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `As an expert ECU tuner, provide a 2-sentence impact report for these changes: Strategy: ${strategy}, Boost: ${boost} bar, AFR: ${afr}, Timing: ${timing} deg. Risk level is ${data.risk}. Mention HP/Torque gains of ~${data.hpGain}% / ~${data.tqGain}%. Focus on engine longevity and performance.`
+    });
+
+    return {
+      ...data,
+      summary: response.text || data.summary
+    };
+  } catch (error) {
+    console.error("AI Impact Report Error:", error);
+    throw new Error("Failed to generate impact report.");
+  }
+}

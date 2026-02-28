@@ -77,6 +77,40 @@ async function startServer() {
     }
   });
 
+  app.get("/api/tuning-limits", (req, res) => {
+    const strategy = req.query.strategy as string;
+    const limits: Record<string, any> = {
+      "heavy_duty": { boost: { min: 0.5, max: 1.8 }, afr: { min: 12.0, max: 15.0 }, timing: { min: -5, max: 15 } },
+      "eco_mode": { boost: { min: 0.0, max: 0.8 }, afr: { min: 14.0, max: 16.0 }, timing: { min: 0, max: 5 } },
+      "gasoline": { boost: { min: 0.5, max: 2.2 }, afr: { min: 11.5, max: 14.7 }, timing: { min: 0, max: 20 } },
+      "diesel": { boost: { min: 1.0, max: 2.5 }, afr: { min: 14.0, max: 18.0 }, timing: { min: -5, max: 10 } },
+      "custom": { boost: { min: 0.0, max: 3.0 }, afr: { min: 10.0, max: 18.0 }, timing: { min: -10, max: 30 } },
+    };
+    res.json(limits[strategy] || limits["custom"]);
+  });
+
+  app.post("/api/impact-report", async (req, res) => {
+    try {
+      const { boost, afr, timing, strategy } = req.body;
+      
+      let risk = "LOW";
+      if (boost > 2.0 || afr < 11.5 || (afr > 14.0 && boost > 1.5)) risk = "HIGH";
+      else if (boost > 1.5 || afr < 12.5) risk = "MEDIUM";
+
+      const hpGain = Math.round((boost - 1.0) * 40 + timing * 1.5);
+      const tqGain = Math.round((boost - 1.0) * 55 + timing * 1.0);
+
+      res.json({
+        hpGain,
+        tqGain,
+        risk,
+        summary: `Tuning applied with ${risk} risk. Estimated gains: +${hpGain}% HP, +${tqGain}% Torque.`
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
